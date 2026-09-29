@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f5">
+  <title>Base de datos de envases</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #182b27;
+      --muted: #667873;
+      --green: #176b52;
+      --green-dark: #10513e;
+      --mint: #e7f3ed;
+      --line: #dce7e1;
+      --paper: #ffffff;
+      --bg: #f4f7f5;
+      --warning: #fff5da;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 90% 0%, #dcefe5 0, transparent 34rem),
+        var(--bg);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .page { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 42px 0 64px; }
+    header { margin-bottom: 28px; }
+    .eyebrow { color: var(--green); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 5px 0 8px; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.08; letter-spacing: -.045em; }
+    .intro { max-width: 650px; margin: 0; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+    .panel { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: 0 12px 36px #244b3510; }
+    h2 { margin: 0 0 6px; font-size: 1.2rem; }
+    .subtext { margin: 0 0 18px; color: var(--muted); font-size: .92rem; }
+    .search-wrap { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 7px; font-size: .88rem; font-weight: 700; }
+    input[type="search"] { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; outline: none; }
+    input[type="search"]:focus { border-color: var(--green); box-shadow: 0 0 0 3px #176b5218; }
+    .results { display: grid; gap: 8px; max-height: 290px; overflow: auto; }
+    .result-option { width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px; background: white; color: var(--ink); text-align: left; transition: .15s ease; }
+    .result-option:hover, .result-option[aria-pressed="true"] { border-color: var(--green); background: var(--mint); }
+    .result-option span { display: block; font-weight: 750; }
+    .result-option small { color: var(--muted); }
+    .empty { padding: 14px; color: var(--muted); text-align: center; }
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+    .divider::before, .divider::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 43px; padding: 9px 14px; border: 1px solid var(--green); border-radius: 12px; background: var(--green); color: white; font-weight: 750; }
+    .button:hover:not(:disabled) { background: var(--green-dark); }
+    .button.secondary { background: white; color: var(--green); }
+    .button:disabled { cursor: wait; opacity: .55; }
+    .status { min-height: 24px; margin: 12px 0 0; color: var(--muted); font-size: .86rem; }
+    .status.error { color: #a32e20; }
+    .camera { display: none; width: 100%; max-height: 290px; margin-top: 14px; border-radius: 14px; background: #15211d; object-fit: contain; }
+    .camera.active { display: block; }
+    .preview { display: none; max-width: 100%; max-height: 290px; margin: 14px auto 0; border-radius: 14px; object-fit: contain; }
+    .preview.active { display: block; }
+    .sheet { min-height: 380px; }
+    .placeholder { display: grid; min-height: 330px; place-items: center; padding: 28px; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); text-align: center; }
+    .placeholder-icon { display: block; margin-bottom: 10px; font-size: 2.4rem; }
+    .sheet-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; margin-bottom: 20px; }
+    .sheet-head h2 { margin: 0; font-size: 1.7rem; }
+    .tag { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: var(--mint); color: var(--green-dark); font-size: .76rem; font-weight: 800; white-space: nowrap; }
+    .confidence { margin: 5px 0 0; color: var(--muted); font-size: .85rem; }
+    .specs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .spec { min-height: 94px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fbfdfb; }
+    .spec dt { margin-bottom: 6px; color: var(--muted); font-size: .78rem; font-weight: 700; }
+    .spec dd { margin: 0; font-size: 1.03rem; font-weight: 750; }
+    .notice { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--warning); color: #705514; font-size: .82rem; }
+    .fine-print { margin: 18px 0 0; color: var(--muted); font-size: .78rem; }
+    @media (max-width: 760px) {
+      .page { padding-top: 28px; }
+      .layout { grid-template-columns: 1fr; }
+      .panel { padding: 19px; }
+      .sheet { min-height: 0; }
+      .placeholder { min-height: 250px; }
+    }
+    @media (max-width: 420px) {
+      .specs { grid-template-columns: 1fr; }
+      .sheet-head { display: block; }
+      .sheet-head .tag { margin-top: 10px; }
+    }
+  </style>
+  <style>
+    :root {
+      --ink: #17251f;
+      --muted: #748078;
+      --green: #245a42;
+      --green-dark: #183f30;
+      --mint: #e9f0e9;
+      --line: #e8e9e3;
+      --paper: #fffefa;
+      --bg: #f4f3ed;
+      --warning: #f7f0dc;
+    }
+
+    body {
+      background: #f4f3ed;
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", sans-serif;
+      letter-spacing: -.01em;
+    }
+
+    .page { width: min(1200px, calc(100% - 48px)); padding: 30px 0 60px; }
+    header {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      min-height: 330px;
+      align-items: center;
+      overflow: hidden;
+      margin-bottom: 22px;
+      padding: 48px 54px;
+      border-radius: 22px;
+      background: #173d2e;
+      color: #f8f6ed;
+      box-shadow: 0 20px 50px #193b2c20;
+    }
+    header::before {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #173d2e 0%, #173d2ef2 40%, #173d2e55 74%, #173d2e30 100%);
+      content: "";
+      pointer-events: none;
+      z-index: 1;
+    }
+    .hero-copy { position: relative; z-index: 2; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 15px;
+      color: #bed7bb;
+      font-size: .72rem;
+      letter-spacing: .16em;
+    }
+    .eyebrow::before { width: 21px; height: 1px; background: #b5d2b3; content: ""; }
+    h1 {
+      max-width: 540px;
+      margin: 0 0 15px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.8rem, 5.7vw, 4.8rem);
+      font-weight: 400;
+      letter-spacing: -.055em;
+      line-height: .99;
+    }
+    .intro { max-width: 440px; margin: 0; color: #d4ddd3; font-size: 1rem; line-height: 1.65; }
+    .hero-visual {
+      position: absolute;
+      inset: 0 0 0 43%;
+      background: linear-gradient(0deg, #173d2e44, transparent 50%), url("Polietileno/WhatsApp%20Image%202026-09-27%20at%2012.38.16%20PM.jpeg") center 43% / cover;
+      opacity: .94;
+    }
+    .hero-chip {
+      position: absolute;
+      z-index: 2;
+      right: 28px;
+      bottom: 24px;
+      padding: 10px 14px;
+      border: 1px solid #ffffff45;
+      border-radius: 999px;
+      background: #173d2eaa;
+      color: #f6f3e9;
+      font-size: .76rem;
+      backdrop-filter: blur(10px);
+    }
+    .layout { grid-template-columns: minmax(0, 1.04fr) minmax(0, .96fr); gap: 22px; }
+    .panel {
+      padding: 27px;
+      border: 1px solid #e9e8e0;
+      border-radius: 18px;
+      background: var(--paper);
+      box-shadow: 0 10px 36px #302c1610;
+    }
+    .section-kicker { margin-bottom: 5px; color: #7b836f; font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    .panel h2 { margin: 0 0 5px; font-family: Georgia, "Times New Roman", serif; font-size: 1.65rem; font-weight: 400; letter-spacing: -.035em; }
+    .subtext { margin-bottom: 20px; color: var(--muted); font-size: .88rem; }
+    label { font-size: .79rem; letter-spacing: .015em; }
+    input[type="search"] {
+      padding: 13px 15px;
+      border-color: #e6e5dd;
+      border-radius: 10px;
+      background: #fbfaf6;
+      font-size: .92rem;
+    }
+    .results { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-height: 315px; padding: 1px; }
+    .result-option {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 1fr);
+      min-height: 82px;
+      align-items: center;
+      gap: 11px;
+      overflow: hidden;
+      padding: 7px;
+      border-color: #edede7;
+      border-radius: 12px;
+      background: #fff;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+    }
+    .result-option:hover, .result-option[aria-pressed="true"] {
+      border-color: #71927b;
+      background: #fbfcf8;
+      box-shadow: 0 5px 15px #203f2c12;
+      transform: translateY(-1px);
+    }
+    .result-option img {
+      width: 68px;
+      height: 66px;
+      border-radius: 8px;
+      background: #efeee7;
+      object-fit: cover;
+      object-position: center 42%;
+    }
+    .result-option span { font-size: .87rem; }
+    .result-option strong, .result-option small { display: block; }
+    .result-option small { margin-top: 2px; color: #7b8179; font-size: .68rem; line-height: 1.3; }
+    .divider { margin: 19px 0 13px; font-size: .68rem; letter-spacing: .11em; }
+    .upload-zone {
+      display: flex;
+      min-height: 125px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 17px;
+      border: 1px dashed #aebba9;
+      border-radius: 13px;
+      background: #f7f8f2;
+      text-align: center;
+      transition: background .2s, border-color .2s;
+    }
+    .upload-zone.dragging { border-color: var(--green); background: #eaf1e7; }
+    .upload-icon { margin-bottom: 5px; color: var(--green); font-size: 1.35rem; line-height: 1; }
+    .upload-zone p { margin: 0 0 8px; color: #717b70; font-size: .77rem; }
+    .actions { justify-content: center; gap: 8px; }
+    .button { min-height: 38px; padding: 8px 13px; border-radius: 9px; font-size: .79rem; }
+    .button.secondary { border-color: #d9e1d6; background: #fff; }
+    .button.secondary:hover:not(:disabled) { border-color: #8da390; background: #f5f8f3; }
+    .status { min-height: 20px; margin: 9px 0 0; text-align: center; font-size: .77rem; }
+    .camera, .preview { max-height: 250px; }
+    .sheet { min-height: 0; }
+    .sheet > .subtext { margin-bottom: 24px; }
+    .placeholder {
+      min-height: 370px;
+      border: 1px solid #efeee8;
+      background: linear-gradient(145deg, #f8f7f1, #f2f1ea);
+      color: #758074;
+      font-size: .88rem;
+      line-height: 1.7;
+    }
+    .placeholder-icon {
+      display: grid;
+      width: 56px;
+      height: 56px;
+      place-items: center;
+      margin: 0 auto 16px;
+      border: 1px solid #dbe2d8;
+      border-radius: 50%;
+      background: #fffefa;
+      color: var(--green);
+      font-size: 1.7rem;
+    }
+    .sheet-head { align-items: center; margin: 0 0 23px; }
+    .sheet-head h3 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: -.04em;
+    }
+    .confidence { margin-top: 6px; font-size: .77rem; }
+    .tag { padding: 6px 10px; background: #edf2e8; color: #476147; font-size: .66rem; letter-spacing: .045em; text-transform: uppercase; }
+    .specs { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .spec { min-height: 100px; padding: 16px; border-color: #eeede7; border-radius: 12px; background: #fbfaf6; }
+    .spec dt { margin-bottom: 7px; font-size: .71rem; font-weight: 600; letter-spacing: .025em; }
+    .spec dd { font-family: Georgia, "Times New Roman", serif; font-size: 1.1rem; font-weight: 400; line-height: 1.35; }
+    .notice { margin-top: 13px; padding: 12px 14px; border: 1px solid #eee5cc; border-radius: 10px; background: #f8f4e8; color: #756846; font-size: .76rem; line-height: 1.55; }
+    .fine-print { margin: 16px 4px 0; color: #85897e; font-size: .73rem; }
+    @media (max-width: 760px) {
+      .page { width: min(100% - 28px, 560px); padding-top: 14px; }
+      header { min-height: 320px; grid-template-columns: 1fr; margin-bottom: 14px; padding: 32px 25px; border-radius: 16px; }
+      header::before { background: linear-gradient(90deg, #173d2ef5, #173d2eb5 75%, #173d2e88); }
+      .hero-visual { inset: 0 0 0 20%; }
+      h1 { max-width: 430px; font-size: clamp(2.7rem, 12vw, 4rem); }
+      .intro { max-width: 380px; font-size: .9rem; }
+      .hero-chip { right: 14px; bottom: 14px; font-size: .68rem; }
+      .layout { grid-template-columns: 1fr; gap: 14px; }
+      .panel { padding: 21px; border-radius: 15px; }
+      .results { max-height: 270px; }
+      .placeholder { min-height: 250px; }
+      .sheet > .subtext { margin-bottom: 18px; }
+    }
+    @media (max-width: 420px) {
+      .results { gap: 7px; }
+      .result-option { grid-template-columns: 54px minmax(0, 1fr); min-height: 68px; gap: 8px; padding: 6px; }
+      .result-option img { width: 54px; height: 54px; }
+      .result-option span { font-size: .77rem; }
+      .result-option small { font-size: .62rem; }
+      .sheet-head { display: flex; }
+      .sheet-head h3 { font-size: 1.7rem; }
+      .tag { max-width: 115px; text-align: center; white-space: normal; }
+      .specs { grid-template-columns: 1fr 1fr; }
+      .spec { min-height: 90px; padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="hero-visual" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <div class="eyebrow">Catálogo inteligente</div>
+        <h1>El envase ideal, a primera vista.</h1>
+        <p class="intro">Explora una colección de formas, materiales y capacidades. Encuentra el envase que buscas o deja que la inteligencia visual lo identifique.</p>
+      </div>
+      <div class="hero-chip">Explora · Identifica · Descubre</div>
+    </header>
+
+    <div class="layout">
+      <section class="panel" aria-labelledby="search-title">
+        <div class="section-kicker">Colección</div>
+        <h2 id="search-title">Buscar envase</h2>
+        <p class="subtext">Encuentra una categoría en nuestra selección.</p>
+        <div class="search-wrap">
+          <label for="search">Nombre o tipo de envase</label>
+          <input id="search" type="search" placeholder="Ej.: aerosol, galón…" autocomplete="off">
+        </div>
+        <div id="results" class="results" aria-live="polite"></div>
+
+        <div class="divider">o identifica con el modelo</div>
+        <div id="dropzone" class="upload-zone">
+          <div class="upload-icon" aria-hidden="true">↑</div>
+          <p>Arrastra una imagen aquí o selecciona una foto</p>
+          <div class="actions">
+            <button id="upload-button" class="button" type="button" disabled>Elegir imagen</button>
+            <input id="image-file" type="file" accept="image/*" hidden>
+            <button id="camera-button" class="button secondary" type="button" disabled>Abrir cámara</button>
+            <button id="stop-camera" class="button secondary" type="button" hidden>Detener cámara</button>
+          </div>
+        </div>
+        <img id="preview" class="preview" alt="Imagen seleccionada para analizar">
+        <video id="camera" class="camera" autoplay playsinline muted></video>
+        <p id="status" class="status" role="status">Cargando modelo de clasificación…</p>
+      </section>
+
+      <section class="panel sheet" aria-labelledby="sheet-title">
+        <div class="section-kicker">Detalles del producto</div>
+        <h2 id="sheet-title">Ficha técnica</h2>
+        <p class="subtext">La información se actualiza al elegir o reconocer un envase.</p>
+        <div id="sheet-content" aria-live="polite">
+          <div class="placeholder"><div><span class="placeholder-icon" aria-hidden="true">⌕</span>Busca una categoría o analiza una foto para ver sus medidas, material y capacidad.</div></div>
+        </div>
+      </section>
+    </div>
+    <p class="fine-print">El modelo de reconocimiento fue creado en Teachable Machine. Las fichas iniciales son referenciales y deben validarse con la medición física o la ficha del fabricante.</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script>
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/MJeO2UUEC/";
+    const packages = [
+      {
+        name: "Aerosol",
+        image: "aerosol.jpg",
+        summary: "Lata cilíndrica con válvula",
+        dimensions: "Ø 5,3 × 19,5 cm",
+        material: "Metal (acero o aluminio; por confirmar)",
+        capacity: "400 ml (estimado)",
+        note: "Referencia para una lata aerosol de tamaño estándar. La capacidad y la aleación dependen del modelo."
+      },
+      {
+        name: "Diamante",
+        image: "diamante.jpg",
+        summary: "Envase tipo gatillo / atomizador",
+        dimensions: "9 × 6,5 × 23 cm",
+        material: "Plástico rígido, probablemente PEAD",
+        capacity: "500 ml (estimado)",
+        note: "La foto de referencia muestra un cuerpo de atomizador. Confirma si la medida incluye el gatillo y la tapa."
+      },
+      {
+        name: "Estriado",
+        image: "estriado.jpg",
+        summary: "Botella transparente con cuerpo estriado",
+        dimensions: "7 × 7 × 22 cm",
+        material: "Plástico transparente, probablemente PET",
+        capacity: "500 ml (estimado)",
+        note: "La forma y el material se infieren de las imágenes de entrenamiento; verifica el polímero y la capacidad del envase real."
+      },
+      {
+        name: "Galón",
+        image: "galon.jpg",
+        summary: "Bidón rectangular con asa",
+        dimensions: "17 × 10 × 30 cm",
+        material: "PEAD / HDPE (referencial)",
+        capacity: "3.785 ml (1 galón)",
+        note: "Se usa la equivalencia del galón estadounidense. El alto puede cambiar si se mide con tapa o asa."
+      },
+      {
+        name: "Polietileno",
+        image: "polietileno.jpg",
+        summary: "Botella plástica cilíndrica",
+        dimensions: "8 × 8 × 26 cm",
+        material: "Polietileno; densidad por confirmar",
+        capacity: "1.000 ml (estimado)",
+        note: "La clasificación nombra el material, no un tamaño único. Esta ficha usa una botella cilíndrica de referencia."
+      },
+      {
+        name: "Shot",
+        image: "shot.jpg",
+        summary: "Botella pequeña de cuello angosto",
+        dimensions: "3,5 × 3,5 × 10 cm",
+        material: "Plástico rígido (tipo por confirmar)",
+        capacity: "60 ml (estimado)",
+        note: "La capacidad se propone como referencia para un envase pequeño; confirma el volumen y el material de la muestra."
+      }
+    ];
+
+    const searchInput = document.querySelector("#search");
+    const results = document.querySelector("#results");
+    const sheetContent = document.querySelector("#sheet-content");
+    const statusMessage = document.querySelector("#status");
+    const uploadButton = document.querySelector("#upload-button");
+    const cameraButton = document.querySelector("#camera-button");
+    const stopCameraButton = document.querySelector("#stop-camera");
+    const imageFile = document.querySelector("#image-file");
+    const dropzone = document.querySelector("#dropzone");
+    const preview = document.querySelector("#preview");
+    const cameraVideo = document.querySelector("#camera");
+    let model;
+    let cameraStream;
+
+    function showStatus(message, isError = false) {
+      statusMessage.textContent = message;
+      statusMessage.classList.toggle("error", isError);
+    }
+
+    function renderResults(filter = "") {
+      const normalizedFilter = filter.trim().toLocaleLowerCase("es");
+      const matches = packages.filter(item =>
+        `${item.name} ${item.summary}`.toLocaleLowerCase("es").includes(normalizedFilter)
+      );
+      results.replaceChildren();
+
+      if (!matches.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No hay envases que coincidan con la búsqueda.";
+        results.append(empty);
+        return;
+      }
+
+      matches.forEach(item => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "result-option";
+        button.setAttribute("aria-pressed", "false");
+        button.dataset.name = item.name;
+        const image = document.createElement("img");
+        image.src = encodeURI(item.image);
+        image.alt = item.name;
+        image.loading = "lazy";
+        const name = document.createElement("strong");
+        name.textContent = item.name;
+        const summary = document.createElement("small");
+        summary.textContent = item.summary;
+        const text = document.createElement("span");
+        text.append(name, summary);
+        button.append(image, text);
+        button.addEventListener("click", () => selectPackage(item));
+        results.append(button);
+      });
+    }
+
+    function selectPackage(item, confidence) {
+      document.querySelectorAll(".result-option").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.name === item.name));
+      });
+
+      const heading = document.createElement("div");
+      heading.className = "sheet-head";
+      const title = document.createElement("div");
+      const name = document.createElement("h3");
+      name.textContent = item.name;
+      title.append(name);
+      if (confidence !== undefined) {
+        const confidenceText = document.createElement("p");
+        confidenceText.className = "confidence";
+        confidenceText.textContent = `Coincidencia del modelo: ${Math.round(confidence * 100)}%`;
+        title.append(confidenceText);
+      }
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "Ficha referencial";
+      heading.append(title, tag);
+
+      const specs = document.createElement("dl");
+      specs.className = "specs";
+      [
+        ["Medidas aproximadas (alto × ancho × fondo)", item.dimensions],
+        ["Material", item.material],
+        ["Capacidad", item.capacity]
+      ].forEach(([label, value]) => {
+        const block = document.createElement("div");
+        block.className = "spec";
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const detail = document.createElement("dd");
+        detail.textContent = value;
+        block.append(term, detail);
+        specs.append(block);
+      });
+
+      const note = document.createElement("p");
+      note.className = "notice";
+      note.textContent = item.note;
+      sheetContent.replaceChildren(heading, specs, note);
+    }
+
+    async function classify(image) {
+      if (!model) {
+        showStatus("El modelo aún no está listo. Inténtalo de nuevo en unos segundos.", true);
+        return;
+      }
+      showStatus("Analizando imagen…");
+      try {
+        const predictions = await model.predict(image);
+        const best = predictions.reduce((current, candidate) =>
+          candidate.probability > current.probability ? candidate : current
+        );
+        const matchedPackage = packages.find(item =>
+          item.name.toLocaleLowerCase("es") === best.className.toLocaleLowerCase("es")
+        );
+        if (!matchedPackage) {
+          throw new Error(`La clase "${best.className}" no tiene una ficha técnica asociada.`);
+        }
+        searchInput.value = matchedPackage.name;
+        renderResults(matchedPackage.name);
+        selectPackage(matchedPackage, best.probability);
+        showStatus(best.probability < 0.55
+          ? "La coincidencia es baja. Prueba con una foto más clara y centrada."
+          : `Envase reconocido: ${matchedPackage.name}.`);
+      } catch (error) {
+        console.error("No se pudo analizar la imagen.", error);
+        showStatus(error.message || "No se pudo analizar la imagen.", true);
+      }
+    }
+
+    searchInput.addEventListener("input", () => renderResults(searchInput.value));
+    uploadButton.addEventListener("click", () => imageFile.click());
+    function handleImage(file) {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        showStatus("Selecciona un archivo de imagen válido.", true);
+        return;
+      }
+      const imageUrl = URL.createObjectURL(file);
+      preview.onload = async () => {
+        preview.classList.add("active");
+        cameraVideo.classList.remove("active");
+        stopCamera();
+        await classify(preview);
+        URL.revokeObjectURL(imageUrl);
+      };
+      preview.onerror = () => {
+        URL.revokeObjectURL(imageUrl);
+        showStatus("No se pudo abrir la imagen seleccionada.", true);
+      };
+      preview.src = imageUrl;
+    }
+
+    imageFile.addEventListener("change", () => {
+      const file = imageFile.files && imageFile.files[0];
+      handleImage(file);
+      imageFile.value = "";
+    });
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropzone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropzone.classList.add("dragging");
+      });
+    });
+    ["dragleave", "drop"].forEach(eventName => {
+      dropzone.addEventListener(eventName, event => {
+        event.preventDefault();
+        dropzone.classList.remove("dragging");
+      });
+    });
+    dropzone.addEventListener("drop", event => {
+      const file = event.dataTransfer && event.dataTransfer.files[0];
+      handleImage(file);
+    });
+
+    cameraButton.addEventListener("click", async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showStatus("La cámara requiere HTTPS o abrir esta página desde localhost.", true);
+        return;
+      }
+      cameraButton.disabled = true;
+      showStatus("Solicitando acceso a la cámara…");
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+        cameraVideo.srcObject = cameraStream;
+        await cameraVideo.play();
+        cameraVideo.classList.add("active");
+        preview.classList.remove("active");
+        stopCameraButton.hidden = false;
+        showStatus("Cámara activa. Mantén el envase centrado frente a la cámara.");
+        classifyCameraFrame();
+      } catch (error) {
+        console.error("No se pudo iniciar la cámara.", error);
+        showStatus("No se pudo iniciar la cámara. Revisa los permisos del navegador.", true);
+        cameraButton.disabled = false;
+      }
+    });
+
+    async function classifyCameraFrame() {
+      if (!cameraStream) return;
+      await classify(cameraVideo);
+      if (cameraStream) window.setTimeout(classifyCameraFrame, 1500);
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = undefined;
+      }
+      cameraVideo.srcObject = null;
+      cameraVideo.classList.remove("active");
+      stopCameraButton.hidden = true;
+      cameraButton.disabled = !model;
+    }
+
+    stopCameraButton.addEventListener("click", stopCamera);
+
+    renderResults();
+    (async () => {
+      try {
+        if (!window.tmImage) throw new Error("No se pudo cargar la librería de clasificación.");
+        model = await tmImage.load(`${MODEL_URL}model.json`, `${MODEL_URL}metadata.json`);
+        uploadButton.disabled = false;
+        cameraButton.disabled = false;
+        showStatus("Modelo listo. Busca una clase, sube una foto o usa la cámara.");
+      } catch (error) {
+        console.error("No se pudo cargar el modelo de Teachable Machine.", error);
+        showStatus("No se pudo cargar el modelo. Comprueba tu conexión a internet y vuelve a cargar la página.", true);
+      }
+    })();
+  </script>
+</body>
+</html>
